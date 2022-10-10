@@ -1,26 +1,41 @@
 import express from "express";
 import { Routes } from "./src/interface/routes.interface";
-class App{
-    public app: express.Application;
-    public port: number;
+import * as dotenv from "dotenv";
+import * as dynamoose from "dynamoose";
+class App {
+  public app: express.Application;
+  public port: number;
 
-    constructor(routes:Routes[]){
-        this.app = express();
-        this.port = 4000;
-        this.initializeRoutes(routes)
+  constructor(routes: Routes[]) {
+    dotenv.config({ path: `env/.env.${process.env.ENV}` });
+    this.app = express();
+    this.port = 4000;
+    this.initializeRoutes(routes);
+    this.initDynamoose();
+  }
 
-    }
+  private initializeRoutes(routes: Routes[]) {
+    routes.forEach((route) => {
+      this.app.use("/", route.router);
+    });
+  }
 
-    private initializeRoutes(routes:Routes[]){
-        routes.forEach(route => {
-            this.app.use("/",route.router)
-        });
-    }
+  public listen() {
+    this.app.listen(this.port, () => {
+      console.log("This app runs on port" + this.port);
+    });
+  }
 
-    public listen(){
-        this.app.listen(this.port,()=>{
-            console.log('This app runs on port' + this.port)
-        })
-    }
+  public initDynamoose() {
+    // Create new DynamoDB instance
+    const ddb = new dynamoose.aws.sdk.DynamoDB({
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      region: process.env.AWS_REGION,
+    });
+
+    // Set DynamoDB instance to the Dynamoose DDB instance
+    dynamoose.aws.ddb.set(ddb);
+  }
 }
 export default App;

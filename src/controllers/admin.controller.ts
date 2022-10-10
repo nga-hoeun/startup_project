@@ -1,8 +1,4 @@
-import { Admin } from '../interface/admin.interface';
 import { Request, Response } from 'express';
-import AdminModel from '../models/admin.model';
-
-const adminInfo = []
 
 class AdminController{
     public getAdmin = (req:Request, res:Response)=>{
