@@ -28,7 +28,7 @@ const dynamoose = __importStar(require("dynamoose"));
 const dotenv = __importStar(require("dotenv"));
 dotenv.config({ path: `env/.env.${process.env.ENV}` });
 exports.userSchema = new dynamoose.Schema({
-    Id: String,
+    id: String,
     pk: {
         hashKey: true,
         type: String,

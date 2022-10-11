@@ -33,7 +33,16 @@ class UserController {
             const deleteUser = this.userService.deleteUser(req.params.id);
             res.status(201).json({ "Response": deleteUser });
         };
+        this.updateUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            yield this.userService.updateUser(req.params.id, {
+                email: req.body.email,
+                username: req.body.username,
+                gender: req.body.gender
+            });
+            res.send("Update Successfuly!");
+        });
     }
 }
+// public logIn = 
 exports.default = UserController;
 //# sourceMappingURL=user.controller.js.map

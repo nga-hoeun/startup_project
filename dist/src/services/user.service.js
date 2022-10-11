@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -6,8 +15,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const user_model_1 = __importDefault(require("../models/user.model"));
 const uuid_1 = require("uuid");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const dynamoose_1 = __importDefault(require("dynamoose"));
+const dynamoose_util_1 = require("../utils/dynamoose.util");
 const saltRounds = 10;
 const someOtherPlaintextPassword = 'not_bacon';
+const ddb = new dynamoose_1.default.aws.sdk.DynamoDB({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+});
+// Set DynamoDB instance to the Dynamoose DDB instance
+dynamoose_1.default.aws.ddb.set(ddb);
+const ddbClient = dynamoose_1.default.aws.ddb();
 class UserService {
     getUser() {
         return user_model_1.default.scan().exec();
@@ -18,7 +37,7 @@ class UserService {
             bcrypt_1.default.hash(user.password, salt, (err, hash) => {
                 // Store hash in your password DB.
                 user_model_1.default.create({
-                    "Id": userId,
+                    "id": userId,
                     "pk": `USER#${userId}`,
                     "sk": `USER_AUTH#${userId}`,
                     "Payload": {
@@ -31,16 +50,71 @@ class UserService {
             });
         });
     }
+    updateUser(id, user) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const exp = (0, dynamoose_util_1.getDynamoExpression)({
+                "Payload": {
+                    email: {
+                        $value: user.email
+                    },
+                    username: {
+                        $value: user.username
+                    },
+                    gender: {
+                        $value: user.gender
+                    },
+                    // score:{
+                    //     $value:60,
+                    //     $selfExpression:"#Payload.#score +"
+                    // },
+                    // item6: {
+                    //     $value: 100,
+                    //     $selfExpression: `#Item.#item6 -`
+                    // }
+                }
+            });
+            console.log(exp);
+            const params = {
+                TableName: process.env.DYNAMODB_TABLE,
+                Key: {
+                    pk: { "S": `USER#${id}` },
+                    sk: { "S": `USER_AUTH#${id}` },
+                },
+                ExpressionAttributeNames: exp.ExpressionAttributeNames,
+                UpdateExpression: exp.UpdateExpression,
+                ExpressionAttributeValues: exp.ExpressionAttributeValues,
+            };
+            console.log(params);
+            try {
+                const data = yield ddbClient.updateItem(params).promise();
+                console.log("Success - item added or updated", data);
+                return data;
+            }
+            catch (err) {
+                console.log("Error", err);
+            }
+            console.log(id, user);
+            // await UserModel.update({pk:`USER#${id}`,sk:`USER_AUTH#${id}`},
+            // {
+            //     "Payload":{
+            //         "email":user.email,
+            //         "username":user.username,
+            //         "gender":user.gender
+            //     }
+            // })
+        });
+    }
     getOneUser(id) {
         return user_model_1.default.query("pk").eq(`USER#${id}`).exec();
     }
     deleteUser(id) {
-        user_model_1.default.delete(id, (error) => {
-            if (error) {
-                return (error);
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                yield user_model_1.default.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
+                console.log("Successfully deleted item");
             }
-            else {
-                return ("Successfully deleted item");
+            catch (error) {
+                console.error(error);
             }
         });
     }

@@ -3,7 +3,7 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: `env/.env.${process.env.ENV}` });
 
 export const userSchema = new dynamoose.Schema({
-  Id: String,
+  id: String,
   pk: {
     hashKey: true,
     type: String,

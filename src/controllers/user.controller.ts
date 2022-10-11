@@ -25,6 +25,20 @@ class UserController{
         const deleteUser = this.userService.deleteUser(req.params.id);
         res.status(201).json({"Response":deleteUser})
     }
+
+    public updateUser = async (req:Request, res:Response)=>{
+        await this.userService.updateUser(
+            req.params.id,
+            {
+                email:req.body.email,
+                username:req.body.username,
+                gender:req.body.gender
+            }
+        )
+        res.send("Update Successfuly!")
+    }
 }
+
+            // public logIn = 
 
 export default UserController
