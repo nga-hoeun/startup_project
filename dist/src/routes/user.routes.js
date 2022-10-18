@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const user_controller_1 = __importDefault(require("../controllers/user.controller"));
 const body_parser_1 = __importDefault(require("body-parser"));
+const auth_middleware_1 = __importDefault(require("../middleware/auth.middleware"));
 var jsonParser = body_parser_1.default.json();
 var urlencodedParser = body_parser_1.default.urlencoded({ extended: false });
 class UserRoute {
@@ -16,10 +17,10 @@ class UserRoute {
         this.initializeRoutes();
     }
     initializeRoutes() {
-        this.router.get(this.path, this.UserController.getUser);
-        this.router.get(this.path + "/:id", this.UserController.getOneUser);
-        this.router.put(this.path + "/:id", jsonParser, this.UserController.updateUser);
-        this.router.delete(this.path + "/:id", this.UserController.deleteUser);
+        this.router.get(this.path, auth_middleware_1.default, this.UserController.getUser);
+        this.router.get(this.path + "/:id", auth_middleware_1.default, this.UserController.getOneUser);
+        this.router.put(this.path + "/:id", auth_middleware_1.default, jsonParser, this.UserController.updateUser);
+        this.router.delete(this.path + "/:id", auth_middleware_1.default, this.UserController.deleteUser);
     }
 }
 exports.default = UserRoute;

@@ -9,7 +9,3 @@ export interface TokenData {
   token: string;
   expiresIn: number;
 }
-
-export interface RequestWithUser extends Request {
-  user: User;
-}

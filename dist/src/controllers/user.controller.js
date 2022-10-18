@@ -17,30 +17,48 @@ class UserController {
     constructor() {
         this.userService = new user_service_1.default();
         this.getUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.userService.getUser();
-            console.log(user);
-            res.status(200).json({ "Data": user });
+            try {
+                const user = yield this.userService.getUser();
+                res.status(200).json({ "Data": user });
+            }
+            catch (error) {
+                res.send(error);
+            }
         });
-        this.getOneUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            console.log("ID", req.params.id);
-            const oneUser = yield this.userService.getOneUser(req.params.id);
-            console.log(oneUser);
-            res.status(200).json({ "User": oneUser });
-            // res.status(200).json("The user with this id "+req.params.id+"has been found!")
+        this.getOneUser = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+            const userId = req.params.id;
+            try {
+                const oneUser = yield this.userService.getOneUser(userId);
+                console.log(oneUser);
+                res.status(200).json({ "User": oneUser });
+            }
+            catch (err) {
+                next(err);
+            }
         });
-        this.deleteUser = (req, res) => {
-            console.log("ID", req.params.id);
-            const deleteUser = this.userService.deleteUser(req.params.id);
-            res.status(201).json({ "Response": deleteUser });
-        };
+        this.deleteUser = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+            const userId = req.params.id;
+            try {
+                const deleteUser = yield this.userService.deleteUser(userId);
+                console.log(deleteUser);
+                res.status(201).json({ "Response": "User Has Been Deleted" });
+            }
+            catch (err) {
+                next(err);
+            }
+        });
         this.updateUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            yield this.userService.updateUser(req.params.id, {
+            const userId = req.params.id;
+            yield this.userService.updateUser(userId, {
                 email: req.body.email,
                 username: req.body.username,
                 gender: req.body.gender
             });
             res.send("Update Successfuly!");
         });
+    }
+    static getOneUser() {
+        throw new Error('Method not implemented.');
     }
 }
 // public logIn = 
