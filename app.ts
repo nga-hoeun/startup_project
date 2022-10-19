@@ -1,5 +1,6 @@
 import express from "express";
 import { Routes } from "./src/interface/routes.interface";
+import errorMiddleware from "./src/middleware/error.middleware";
 import * as dotenv from "dotenv";
 import * as dynamoose from "dynamoose";
 import cookieParser from "cookie-parser"
@@ -13,6 +14,7 @@ class App {
     this.port = 4000;
     this.initializeRoutes(routes);
     this.initializeMiddlewares();
+    this.initializeErrorHandling();
     this.initDynamoose();
   }
 
@@ -32,6 +34,10 @@ class App {
     this.app.listen(this.port, () => {
       console.log("This app runs on port" + this.port);
     });
+  }
+
+  private initializeErrorHandling() {
+    this.app.use(errorMiddleware);
   }
 
   public initDynamoose() {

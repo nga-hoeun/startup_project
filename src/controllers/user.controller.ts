@@ -2,16 +2,13 @@ import { NextFunction, Request, Response } from 'express';
 import UserService from '../services/user.service';
 
 class UserController{
-    static getOneUser() {
-        throw new Error('Method not implemented.');
-    }
     private userService = new UserService()
-    public getUser = async (req:Request, res:Response)=>{
+    public getUser = async (req:Request, res:Response, next:NextFunction)=>{
         try{
             const user = await this.userService.getUser()
             res.status(200).json({"Data":user})
         }catch(error){
-            res.send(error)
+            next(error)
         }
     }
     public getOneUser  = async (req:Request, res:Response, next: NextFunction)=>{
@@ -36,19 +33,22 @@ class UserController{
         }
     }
 
-    public updateUser = async (req:Request, res:Response)=>{
+    public updateUser = async (req:Request, res:Response, next:NextFunction)=>{
         const userId = req.params.id
-        await this.userService.updateUser(
-            userId,
-            {
-                email:req.body.email,
-                username:req.body.username,
-                gender:req.body.gender
-            })
-        res.send("Update Successfuly!")
+        try{
+            await this.userService.updateUser(
+                userId,
+                {
+                    email:req.body.email,
+                    username:req.body.username,
+                    gender:req.body.gender
+                }
+            )
+            res.send("Update Successfuly!")
+        }catch(error){
+            next(error)
+        }
     }
 }
-
-            // public logIn = 
 
 export default UserController

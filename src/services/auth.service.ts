@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import { DataStoredInToken, TokenData } from '../interface/auth.interface';
 import { AnyDocument } from 'dynamoose/dist/Document';
 import { HttpException } from '../utils/error.utils';
+import { isEmpty } from '../utils/create.util';
 
 
 export default class AuthService{
@@ -24,6 +25,10 @@ export default class AuthService{
             throw new HttpException(401,"Unsucessful login!!")
         }
     }
+    public async logOut() {
+        
+      }
+
     public createToken(user: AnyDocument): TokenData {
         const dataStoredInToken: DataStoredInToken = { id: user.id };
         const secretKey: string = process.env.AWS_ACCESS_KEY_ID;

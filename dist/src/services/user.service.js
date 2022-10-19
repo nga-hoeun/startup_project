@@ -19,6 +19,7 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const dynamoose_1 = __importDefault(require("dynamoose"));
 const dynamoose_util_1 = require("../utils/dynamoose.util");
 const create_util_1 = require("../utils/create.util");
+const error_utils_1 = require("../utils/error.utils");
 const saltRounds = 10;
 const someOtherPlaintextPassword = "not_bacon";
 const ddb = new dynamoose_1.default.aws.sdk.DynamoDB({
@@ -36,35 +37,41 @@ class UserService {
         });
     }
     createUser(user) {
-        const userId = (0, uuid_1.v4)();
-        if ((0, create_util_1.isEmpty)(user)) {
-            throw new Error("Didn't meet all the required fields");
-        }
-        else {
-            const password = generate_password_1.default.generate({
-                length: 8,
-                uppercase: true,
-                symbols: true,
-                numbers: true,
-                lowercase: true
-            });
-            bcrypt_1.default.genSalt(saltRounds, (err, salt) => {
-                bcrypt_1.default.hash(password, salt, (err, hash) => {
-                    // Store hash in your password DB.
-                    user_model_1.default.create({
-                        id: userId,
-                        pk: `USER#${userId}`,
-                        sk: `USER_AUTH#${userId}`,
-                        Payload: {
-                            username: user.username,
-                            email: user.email,
-                            gender: user.gender,
-                            password: hash,
-                        },
+        return __awaiter(this, void 0, void 0, function* () {
+            const userId = (0, uuid_1.v4)();
+            const userToFind = yield user_model_1.default.scan("Payload.email").eq(user.email).exec();
+            if ((0, create_util_1.isEmpty)(user)) {
+                throw new error_utils_1.HttpException(400, "Didn't meet all the required fields");
+            }
+            else if (userToFind) {
+                throw new error_utils_1.HttpException(409, `This email ${user.email} already exists.`);
+            }
+            else {
+                const password = generate_password_1.default.generate({
+                    length: 8,
+                    uppercase: true,
+                    symbols: true,
+                    numbers: true,
+                    lowercase: true,
+                });
+                bcrypt_1.default.genSalt(saltRounds, (err, salt) => {
+                    bcrypt_1.default.hash(password, salt, (err, hash) => {
+                        // Store hash in your password DB.
+                        user_model_1.default.create({
+                            id: userId,
+                            pk: `USER#${userId}`,
+                            sk: `USER_AUTH#${userId}`,
+                            Payload: {
+                                username: user.username,
+                                email: user.email,
+                                gender: user.gender,
+                                password: hash,
+                            },
+                        });
                     });
                 });
-            });
-        }
+            }
+        });
     }
     updateUser(id, user) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -107,16 +114,16 @@ class UserService {
         return __awaiter(this, void 0, void 0, function* () {
             const userFound = user_model_1.default.query("pk").eq(`USER#${id}`).exec();
             if ((yield userFound).count == 0) {
-                throw new Error("User doesn't exist");
+                throw new error_utils_1.HttpException(404, "User doesn't exist");
             }
             return userFound;
         });
     }
     deleteUser(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const userFound = user_model_1.default.query("pk").eq(`USER#${id}`).exec();
-            if ((yield userFound).count == 0) {
-                throw new Error("User doesn't exist");
+            const userFound = yield user_model_1.default.query("pk").eq(`USER#${id}`).exec();
+            if (userFound.count == 0) {
+                throw new error_utils_1.HttpException(404, "User doesn't exist");
             }
             yield user_model_1.default.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
         });

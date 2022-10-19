@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { User } from "../interface/user.interface";
 import AuthService from "../services/auth.service";
 import UserService from "../services/user.service";
 
@@ -7,7 +8,7 @@ export default class AuthController{
     public authService = new AuthService;
     public signUp = async (req:Request,res:Response, next:NextFunction)=>{
         try{
-            this.userService.createUser({
+            await this.userService.createUser({
                 email: req.body.email,
                 username: req.body.username,
                 gender: req.body.gender,
@@ -27,6 +28,17 @@ export default class AuthController{
             res.status(200).json({ data: userInfo, message: 'login' });
         } catch (error) {
             next(error);
+        }
+    }
+
+    public logOut = async (req:Request, res:Response, next:NextFunction) => {
+        try {
+            const logOutUserData = await this.authService.logOut();
+      
+            res.setHeader('Set-Cookie', ['Authorization=; Max-age=0']);
+            res.status(200).json({ data: logOutUserData, message: 'logout' });
+        } catch (error) {
+            
         }
     }
 }

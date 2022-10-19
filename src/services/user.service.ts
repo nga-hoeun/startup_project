@@ -1,6 +1,6 @@
 import { User } from "../interface/user.interface";
 import UserModel from "../models/user.model";
-import Generator from "generate-password"
+import Generator from "generate-password";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 import dynamoose from "dynamoose";
@@ -11,6 +11,7 @@ import {
   UpdateItemInput,
 } from "aws-sdk/clients/dynamodb";
 import { isEmpty } from "../utils/create.util";
+import { HttpException } from "../utils/error.utils";
 const saltRounds = 10;
 const someOtherPlaintextPassword = "not_bacon";
 const ddb = new dynamoose.aws.sdk.DynamoDB({
@@ -27,37 +28,39 @@ export default class UserService {
     return UserModel.scan().exec();
   }
 
-  public createUser(user: User) {
+  public async createUser(user: User) {
     const userId = uuidv4();
-    if(isEmpty(user)){
-        throw new Error("Didn't meet all the required fields")
+    const userToFind = await UserModel.scan("Payload.email").eq(user.email).exec();
+    if (isEmpty(user)) {
+      throw new HttpException(400, "Didn't meet all the required fields");
+    } else if(userToFind){
+      throw new HttpException(409,`This email ${user.email} already exists.`)
     }else{
-        const password = Generator.generate({
-            length:8,
-            uppercase:true,
-            symbols:true,
-            numbers:true,
-            lowercase:true
-        })
-        bcrypt.genSalt(saltRounds, (err, salt) => {
-          bcrypt.hash(password, salt, (err, hash) => {
-            // Store hash in your password DB.
-            UserModel.create({
-              id: userId,
-              pk: `USER#${userId}`,
-              sk: `USER_AUTH#${userId}`,
-              Payload: {
-                username: user.username,
-                email: user.email,
-                gender: user.gender,
-                password: hash,
-              },
-            });
+      const password = Generator.generate({
+        length: 8,
+        uppercase: true,
+        symbols: true,
+        numbers: true,
+        lowercase: true,
+      });
+      bcrypt.genSalt(saltRounds, (err, salt) => {
+        bcrypt.hash(password, salt, (err, hash) => {
+          // Store hash in your password DB.
+          UserModel.create({
+            id: userId,
+            pk: `USER#${userId}`,
+            sk: `USER_AUTH#${userId}`,
+            Payload: {
+              username: user.username,
+              email: user.email,
+              gender: user.gender,
+              password: hash,
+            },
           });
         });
+      });
     }
   }
-
   public async updateUser(id: string, user: User) {
     const exp = getDynamoExpression({
       Payload: {
@@ -97,16 +100,16 @@ export default class UserService {
 
   public async getOneUser(id: string) {
     const userFound = UserModel.query("pk").eq(`USER#${id}`).exec();
-    if((await userFound).count == 0){
-        throw new Error("User doesn't exist")
+    if ((await userFound).count == 0) {
+      throw new HttpException(404, "User doesn't exist");
     }
     return userFound;
   }
 
   public async deleteUser(id: string) {
-    const userFound = UserModel.query("pk").eq(`USER#${id}`).exec();
-    if((await userFound).count == 0){
-        throw new Error("User doesn't exist")
+    const userFound = await UserModel.query("pk").eq(`USER#${id}`).exec();
+    if (userFound.count == 0) {
+      throw new HttpException(404, "User doesn't exist");
     }
     await UserModel.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
   }

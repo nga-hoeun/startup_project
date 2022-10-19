@@ -25,7 +25,9 @@
     "http-exception": "^0.0.2",
     "http-exception-transformer": "^1.2.3",
     "jsonwebtoken": "^8.5.1",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "winston": "^3.8.2",
+    "winston-daily-rotate-file": "^4.7.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.3",

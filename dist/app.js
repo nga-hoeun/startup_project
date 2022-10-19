@@ -27,6 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const error_middleware_1 = __importDefault(require("./src/middleware/error.middleware"));
 const dotenv = __importStar(require("dotenv"));
 const dynamoose = __importStar(require("dynamoose"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
@@ -37,6 +38,7 @@ class App {
         this.port = 4000;
         this.initializeRoutes(routes);
         this.initializeMiddlewares();
+        this.initializeErrorHandling();
         this.initDynamoose();
     }
     initializeRoutes(routes) {
@@ -53,6 +55,9 @@ class App {
         this.app.listen(this.port, () => {
             console.log("This app runs on port" + this.port);
         });
+    }
+    initializeErrorHandling() {
+        this.app.use(error_middleware_1.default);
     }
     initDynamoose() {
         // Create new DynamoDB instance

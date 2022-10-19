@@ -16,13 +16,13 @@ const user_service_1 = __importDefault(require("../services/user.service"));
 class UserController {
     constructor() {
         this.userService = new user_service_1.default();
-        this.getUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.getUser = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const user = yield this.userService.getUser();
                 res.status(200).json({ "Data": user });
             }
             catch (error) {
-                res.send(error);
+                next(error);
             }
         });
         this.getOneUser = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
@@ -47,20 +47,21 @@ class UserController {
                 next(err);
             }
         });
-        this.updateUser = (req, res) => __awaiter(this, void 0, void 0, function* () {
+        this.updateUser = (req, res, next) => __awaiter(this, void 0, void 0, function* () {
             const userId = req.params.id;
-            yield this.userService.updateUser(userId, {
-                email: req.body.email,
-                username: req.body.username,
-                gender: req.body.gender
-            });
-            res.send("Update Successfuly!");
+            try {
+                yield this.userService.updateUser(userId, {
+                    email: req.body.email,
+                    username: req.body.username,
+                    gender: req.body.gender
+                });
+                res.send("Update Successfuly!");
+            }
+            catch (error) {
+                next(error);
+            }
         });
     }
-    static getOneUser() {
-        throw new Error('Method not implemented.');
-    }
 }
-// public logIn = 
 exports.default = UserController;
 //# sourceMappingURL=user.controller.js.map
