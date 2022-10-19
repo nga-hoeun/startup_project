@@ -27,14 +27,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const error_middleware_1 = __importDefault(require("./src/middleware/error.middleware"));
 const dotenv = __importStar(require("dotenv"));
 const dynamoose = __importStar(require("dynamoose"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 class App {
     constructor(routes) {
         dotenv.config({ path: `env/.env.${process.env.ENV}` });
         this.app = (0, express_1.default)();
         this.port = 4000;
         this.initializeRoutes(routes);
+        this.initializeMiddlewares();
+        this.initializeErrorHandling();
         this.initDynamoose();
     }
     initializeRoutes(routes) {
@@ -42,10 +46,18 @@ class App {
             this.app.use("/", route.router);
         });
     }
+    initializeMiddlewares() {
+        // this.app.use(express.json());
+        // this.app.use(express.urlencoded({ extended: true }));
+        this.app.use((0, cookie_parser_1.default)());
+    }
     listen() {
         this.app.listen(this.port, () => {
             console.log("This app runs on port" + this.port);
         });
+    }
+    initializeErrorHandling() {
+        this.app.use(error_middleware_1.default);
     }
     initDynamoose() {
         // Create new DynamoDB instance

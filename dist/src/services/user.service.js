@@ -13,12 +13,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const user_model_1 = __importDefault(require("../models/user.model"));
+const generate_password_1 = __importDefault(require("generate-password"));
 const uuid_1 = require("uuid");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const dynamoose_1 = __importDefault(require("dynamoose"));
 const dynamoose_util_1 = require("../utils/dynamoose.util");
+const create_util_1 = require("../utils/create.util");
+const error_utils_1 = require("../utils/error.utils");
 const saltRounds = 10;
-const someOtherPlaintextPassword = 'not_bacon';
+const someOtherPlaintextPassword = "not_bacon";
 const ddb = new dynamoose_1.default.aws.sdk.DynamoDB({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -29,56 +32,68 @@ dynamoose_1.default.aws.ddb.set(ddb);
 const ddbClient = dynamoose_1.default.aws.ddb();
 class UserService {
     getUser() {
-        return user_model_1.default.scan().exec();
+        return __awaiter(this, void 0, void 0, function* () {
+            return user_model_1.default.scan().exec();
+        });
     }
     createUser(user) {
-        const userId = (0, uuid_1.v4)();
-        bcrypt_1.default.genSalt(saltRounds, (err, salt) => {
-            bcrypt_1.default.hash(user.password, salt, (err, hash) => {
-                // Store hash in your password DB.
-                user_model_1.default.create({
-                    "id": userId,
-                    "pk": `USER#${userId}`,
-                    "sk": `USER_AUTH#${userId}`,
-                    "Payload": {
-                        "username": user.username,
-                        "email": user.email,
-                        "gender": user.gender,
-                        "password": hash,
-                    }
+        return __awaiter(this, void 0, void 0, function* () {
+            const userId = (0, uuid_1.v4)();
+            const userToFind = yield user_model_1.default.scan("Payload.email").eq(user.email).exec();
+            if ((0, create_util_1.isEmpty)(user)) {
+                throw new error_utils_1.HttpException(400, "Didn't meet all the required fields");
+            }
+            else if (userToFind) {
+                throw new error_utils_1.HttpException(409, `This email ${user.email} already exists.`);
+            }
+            else {
+                const password = generate_password_1.default.generate({
+                    length: 8,
+                    uppercase: true,
+                    symbols: true,
+                    numbers: true,
+                    lowercase: true,
                 });
-            });
+                bcrypt_1.default.genSalt(saltRounds, (err, salt) => {
+                    bcrypt_1.default.hash(password, salt, (err, hash) => {
+                        // Store hash in your password DB.
+                        user_model_1.default.create({
+                            id: userId,
+                            pk: `USER#${userId}`,
+                            sk: `USER_AUTH#${userId}`,
+                            Payload: {
+                                username: user.username,
+                                email: user.email,
+                                gender: user.gender,
+                                password: hash,
+                            },
+                        });
+                    });
+                });
+            }
         });
     }
     updateUser(id, user) {
         return __awaiter(this, void 0, void 0, function* () {
             const exp = (0, dynamoose_util_1.getDynamoExpression)({
-                "Payload": {
+                Payload: {
                     email: {
-                        $value: user.email
+                        $value: user.email,
                     },
                     username: {
-                        $value: user.username
+                        $value: user.username,
                     },
                     gender: {
-                        $value: user.gender
+                        $value: user.gender,
                     },
-                    // score:{
-                    //     $value:60,
-                    //     $selfExpression:"#Payload.#score +"
-                    // },
-                    // item6: {
-                    //     $value: 100,
-                    //     $selfExpression: `#Item.#item6 -`
-                    // }
-                }
+                },
             });
             console.log(exp);
             const params = {
                 TableName: process.env.DYNAMODB_TABLE,
                 Key: {
-                    pk: { "S": `USER#${id}` },
-                    sk: { "S": `USER_AUTH#${id}` },
+                    pk: { S: `USER#${id}` },
+                    sk: { S: `USER_AUTH#${id}` },
                 },
                 ExpressionAttributeNames: exp.ExpressionAttributeNames,
                 UpdateExpression: exp.UpdateExpression,
@@ -93,29 +108,24 @@ class UserService {
             catch (err) {
                 console.log("Error", err);
             }
-            console.log(id, user);
-            // await UserModel.update({pk:`USER#${id}`,sk:`USER_AUTH#${id}`},
-            // {
-            //     "Payload":{
-            //         "email":user.email,
-            //         "username":user.username,
-            //         "gender":user.gender
-            //     }
-            // })
         });
     }
     getOneUser(id) {
-        return user_model_1.default.query("pk").eq(`USER#${id}`).exec();
+        return __awaiter(this, void 0, void 0, function* () {
+            const userFound = user_model_1.default.query("pk").eq(`USER#${id}`).exec();
+            if ((yield userFound).count == 0) {
+                throw new error_utils_1.HttpException(404, "User doesn't exist");
+            }
+            return userFound;
+        });
     }
     deleteUser(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                yield user_model_1.default.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
-                console.log("Successfully deleted item");
+            const userFound = yield user_model_1.default.query("pk").eq(`USER#${id}`).exec();
+            if (userFound.count == 0) {
+                throw new error_utils_1.HttpException(404, "User doesn't exist");
             }
-            catch (error) {
-                console.error(error);
-            }
+            yield user_model_1.default.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
         });
     }
 }

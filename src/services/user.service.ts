@@ -1,110 +1,116 @@
-import { User } from '../interface/user.interface';
-import UserModel from '../models/user.model';
-import { v4 as uuidv4 } from 'uuid';
+import { User } from "../interface/user.interface";
+import UserModel from "../models/user.model";
+import Generator from "generate-password";
+import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
-import dynamoose from "dynamoose"
-import { getDynamoExpression } from '../utils/dynamoose.util';
-import { ExpressionAttributeNameMap, ExpressionAttributeValueMap, UpdateItemInput } from 'aws-sdk/clients/dynamodb';
+import dynamoose from "dynamoose";
+import { getDynamoExpression } from "../utils/dynamoose.util";
+import {
+  ExpressionAttributeNameMap,
+  ExpressionAttributeValueMap,
+  UpdateItemInput,
+} from "aws-sdk/clients/dynamodb";
+import { isEmpty } from "../utils/create.util";
+import { HttpException } from "../utils/error.utils";
 const saltRounds = 10;
-const someOtherPlaintextPassword = 'not_bacon';
+const someOtherPlaintextPassword = "not_bacon";
 const ddb = new dynamoose.aws.sdk.DynamoDB({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
-  });
-  // Set DynamoDB instance to the Dynamoose DDB instance
-  dynamoose.aws.ddb.set(ddb);
-const ddbClient = dynamoose.aws.ddb()
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
+// Set DynamoDB instance to the Dynamoose DDB instance
+dynamoose.aws.ddb.set(ddb);
+const ddbClient = dynamoose.aws.ddb();
+export default class UserService {
+  static getOneUser: any;
+  public async getUser() {
+    return UserModel.scan().exec();
+  }
 
-export default class UserService{
-    public getUser(){
-        return UserModel.scan().exec()
-    }
-
-    public createUser(user:User){
-        const userId = uuidv4()
-        bcrypt.genSalt(saltRounds, (err, salt) => {
-            bcrypt.hash(user.password, salt, (err, hash) => {
-                // Store hash in your password DB.
-                UserModel.create({
-                    "id":userId,
-                    "pk":`USER#${userId}`,
-                    "sk":`USER_AUTH#${userId}`,
-                    "Payload":{
-                        "username":user.username,
-                        "email":user.email,
-                        "gender":user.gender,
-                        "password": hash,
-                    }
-                })
-            });
-        });
-    }
-
-    public async updateUser(id, user){
-        const exp = getDynamoExpression({
-            "Payload": {
-                email: {
-                    $value: user.email
-                },
-                username:{
-                    $value: user.username
-                },
-                gender:{
-                    $value: user.gender
-                },
-                // score:{
-                //     $value:60,
-                //     $selfExpression:"#Payload.#score +"
-                // },
-                // item6: {
-                //     $value: 100,
-                //     $selfExpression: `#Item.#item6 -`
-                // }
-            }
-        });
-        console.log(exp)
-        const params:UpdateItemInput = {
-            TableName: process.env.DYNAMODB_TABLE,
-            Key: {
-              pk:{"S": `USER#${id}`},
-              sk: {"S": `USER_AUTH#${id}`},
+  public async createUser(user: User) {
+    const userId = uuidv4();
+    const userToFind = await UserModel.scan("Payload.email").eq(user.email).exec();
+    if (isEmpty(user)) {
+      throw new HttpException(400, "Didn't meet all the required fields");
+    } else if(userToFind){
+      throw new HttpException(409,`This email ${user.email} already exists.`)
+    }else{
+      const password = Generator.generate({
+        length: 8,
+        uppercase: true,
+        symbols: true,
+        numbers: true,
+        lowercase: true,
+      });
+      bcrypt.genSalt(saltRounds, (err, salt) => {
+        bcrypt.hash(password, salt, (err, hash) => {
+          // Store hash in your password DB.
+          UserModel.create({
+            id: userId,
+            pk: `USER#${userId}`,
+            sk: `USER_AUTH#${userId}`,
+            Payload: {
+              username: user.username,
+              email: user.email,
+              gender: user.gender,
+              password: hash,
             },
-            ExpressionAttributeNames: exp.ExpressionAttributeNames as ExpressionAttributeNameMap,
-            UpdateExpression:exp.UpdateExpression as string,
-            ExpressionAttributeValues: exp.ExpressionAttributeValues as ExpressionAttributeValueMap,
-          };
-          console.log(params)
-          try {
-            const data = await ddbClient.updateItem(params).promise();
-            console.log("Success - item added or updated", data);
-            return data;
-          } catch (err) {
-            console.log("Error", err);
-          }
-        console.log(id, user)
-        // await UserModel.update({pk:`USER#${id}`,sk:`USER_AUTH#${id}`},
-        // {
-        //     "Payload":{
-        //         "email":user.email,
-        //         "username":user.username,
-        //         "gender":user.gender
-        //     }
-        // })
-
+          });
+        });
+      });
     }
-
-    public getOneUser(id: string){
-        return UserModel.query("pk").eq(`USER#${id}`).exec();
+  }
+  public async updateUser(id: string, user: User) {
+    const exp = getDynamoExpression({
+      Payload: {
+        email: {
+          $value: user.email,
+        },
+        username: {
+          $value: user.username,
+        },
+        gender: {
+          $value: user.gender,
+        },
+      },
+    });
+    console.log(exp);
+    const params: UpdateItemInput = {
+      TableName: process.env.DYNAMODB_TABLE,
+      Key: {
+        pk: { S: `USER#${id}` },
+        sk: { S: `USER_AUTH#${id}` },
+      },
+      ExpressionAttributeNames:
+        exp.ExpressionAttributeNames as ExpressionAttributeNameMap,
+      UpdateExpression: exp.UpdateExpression as string,
+      ExpressionAttributeValues:
+        exp.ExpressionAttributeValues as ExpressionAttributeValueMap,
+    };
+    console.log(params);
+    try {
+      const data = await ddbClient.updateItem(params).promise();
+      console.log("Success - item added or updated", data);
+      return data;
+    } catch (err) {
+      console.log("Error", err);
     }
+  }
 
-    public async deleteUser(id:string){
-        try {
-            await UserModel.delete({pk:`USER#${id}`, sk:`USER_AUTH#${id}`});
-            console.log("Successfully deleted item");
-        } catch (error) {
-            console.error(error);
-        }
+  public async getOneUser(id: string) {
+    const userFound = UserModel.query("pk").eq(`USER#${id}`).exec();
+    if ((await userFound).count == 0) {
+      throw new HttpException(404, "User doesn't exist");
     }
+    return userFound;
+  }
+
+  public async deleteUser(id: string) {
+    const userFound = await UserModel.query("pk").eq(`USER#${id}`).exec();
+    if (userFound.count == 0) {
+      throw new HttpException(404, "User doesn't exist");
+    }
+    await UserModel.delete({ pk: `USER#${id}`, sk: `USER_AUTH#${id}` });
+  }
 }
-
