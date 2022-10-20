@@ -3,7 +3,7 @@ import { Routes } from "./src/interface/routes.interface";
 import errorMiddleware from "./src/middleware/error.middleware";
 import * as dotenv from "dotenv";
 import * as dynamoose from "dynamoose";
-import cookieParser from "cookie-parser"
+// import cookieParser from "cookie-parser"
 class App {
   public app: express.Application;
   public port: number;
@@ -13,7 +13,7 @@ class App {
     this.app = express();
     this.port = 4000;
     this.initializeRoutes(routes);
-    this.initializeMiddlewares();
+    // this.initializeMiddlewares();
     this.initializeErrorHandling();
     this.initDynamoose();
   }
@@ -24,11 +24,9 @@ class App {
     });
   }
 
-  private initializeMiddlewares() {
-    // this.app.use(express.json());
-    // this.app.use(express.urlencoded({ extended: true }));
-    this.app.use(cookieParser());
-  }
+  // private initializeMiddlewares() {
+  //   this.app.use(cookieParser());
+  // }
 
   public listen() {
     this.app.listen(this.port, () => {

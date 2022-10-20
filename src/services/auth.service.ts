@@ -19,15 +19,15 @@ export default class AuthService{
         console.log(match)
         if(match){
             const tokenData = this.createToken(userToFind[0]);
-            const cookie = this.createCookie(tokenData);
-            return {userInfo,cookie}
+            // const cookie = this.createCookie(tokenData);
+            return {userInfo,tokenData}
         }else{
             throw new HttpException(401,"Unsucessful login!!")
         }
     }
     public async logOut() {
         
-      }
+    }
 
     public createToken(user: AnyDocument): TokenData {
         const dataStoredInToken: DataStoredInToken = { id: user.id };
@@ -40,18 +40,4 @@ export default class AuthService{
     public createCookie(tokenData: TokenData): string {
         return `Authorization=${tokenData.token}; HttpOnly; Max-Age=${tokenData.expiresIn};`;
     }
-    
-        // public async login(userData: CreateUserDto): Promise<{ cookie: string; findUser: User }> {
-        //     if (isEmpty(userData)) throw new HttpException(400, 'userData is empty');
-        
-        //     const findUser: User = this.users.find(user => user.email === userData.email);
-        //     if (!findUser) throw new HttpException(409, `This email ${userData.email} was not found`);
-        
-        //     const isPasswordMatching: boolean = await compare(userData.password, findUser.password);
-        //     if (!isPasswordMatching) throw new HttpException(409, "You're password not matching");
-        
-    
-        
-        //     return { cookie, findUser };
-        //   }
 }
